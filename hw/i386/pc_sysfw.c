@@ -103,6 +103,8 @@ void pc_system_flash_create(PCMachineState *pcms)
                                           "pflash1");
         pcms->flash[2] = pc_pflash_create(pcms, "system.flash2",
                                           "pflash2");
+        pcms->flash[3] = pc_pflash_create(pcms, "system.flash3",
+                                          "pflash3");
     }
 }
 
