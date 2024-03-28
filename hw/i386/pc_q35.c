@@ -331,7 +331,7 @@ static void pc_q35_init(MachineState *machine)
     if (pcms->svsm_virtio_mmio) {
         for (int dev = 0; dev < 4; dev++) {
             hwaddr addr = 0xfef00000 + dev * TARGET_PAGE_SIZE;
-            sysbus_create_simple("virtio-mmio", addr, /* no irq */ NULL);
+            sysbus_create_simple("virtio-mmio", addr, x86ms->gsi[3]);
         }
     }
 }
