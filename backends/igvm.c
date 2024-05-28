@@ -124,16 +124,16 @@ struct IGVMHandler {
 };
 
 static struct IGVMHandler handlers[] = {
-    { IGVM_VHT_PAGE_DATA, HEADER_SECTION_DIRECTIVE, directive_page_data },
-    { IGVM_VHT_VP_CONTEXT, HEADER_SECTION_DIRECTIVE, directive_vp_context },
-    { IGVM_VHT_PARAMETER_AREA, HEADER_SECTION_DIRECTIVE, directive_parameter_area },
-    { IGVM_VHT_PARAMETER_INSERT, HEADER_SECTION_DIRECTIVE, directive_parameter_insert },
-    { IGVM_VHT_MEMORY_MAP, HEADER_SECTION_DIRECTIVE, directive_memory_map },
-    { IGVM_VHT_VP_COUNT_PARAMETER, HEADER_SECTION_DIRECTIVE, directive_vp_count },
-    { IGVM_VHT_ENVIRONMENT_INFO_PARAMETER, HEADER_SECTION_DIRECTIVE, directive_environment_info },
-    { IGVM_VHT_REQUIRED_MEMORY, HEADER_SECTION_DIRECTIVE, directive_required_memory },
-    { IGVM_VHT_SNP_ID_BLOCK, HEADER_SECTION_DIRECTIVE, directive_snp_id_block },
-    { IGVM_VHT_GUEST_POLICY, HEADER_SECTION_INITIALIZATION, initialization_guest_policy },
+    { IGVM_VHT_PAGE_DATA, IGVM_HEADER_SECTION_DIRECTIVE, directive_page_data },
+    { IGVM_VHT_VP_CONTEXT, IGVM_HEADER_SECTION_DIRECTIVE, directive_vp_context },
+    { IGVM_VHT_PARAMETER_AREA, IGVM_HEADER_SECTION_DIRECTIVE, directive_parameter_area },
+    { IGVM_VHT_PARAMETER_INSERT, IGVM_HEADER_SECTION_DIRECTIVE, directive_parameter_insert },
+    { IGVM_VHT_MEMORY_MAP, IGVM_HEADER_SECTION_DIRECTIVE, directive_memory_map },
+    { IGVM_VHT_VP_COUNT_PARAMETER, IGVM_HEADER_SECTION_DIRECTIVE, directive_vp_count },
+    { IGVM_VHT_ENVIRONMENT_INFO_PARAMETER, IGVM_HEADER_SECTION_DIRECTIVE, directive_environment_info },
+    { IGVM_VHT_REQUIRED_MEMORY, IGVM_HEADER_SECTION_DIRECTIVE, directive_required_memory },
+    { IGVM_VHT_SNP_ID_BLOCK, IGVM_HEADER_SECTION_DIRECTIVE, directive_snp_id_block },
+    { IGVM_VHT_GUEST_POLICY, IGVM_HEADER_SECTION_INITIALIZATION, initialization_guest_policy },
 };
 
 static int handle(uint32_t type, struct igvm_context *ctx, int i, Error **errp)
@@ -223,18 +223,18 @@ static int igvm_type_to_cgs_type(IgvmPageDataType memory_type, bool unmeasured,
                                  bool zero)
 {
     switch (memory_type) {
-    case NORMAL: {
+    case IGVM_PAGE_DATA_TYPE_NORMAL: {
         if (unmeasured) {
             return CGS_PAGE_TYPE_UNMEASURED;
         } else {
             return zero ? CGS_PAGE_TYPE_ZERO : CGS_PAGE_TYPE_NORMAL;
         }
     }
-    case SECRETS:
+    case IGVM_PAGE_DATA_TYPE_SECRETS:
         return CGS_PAGE_TYPE_SECRETS;
-    case CPUID_DATA:
+    case IGVM_PAGE_DATA_TYPE_CPUID_DATA:
         return CGS_PAGE_TYPE_CPUID;
-    case CPUID_XF:
+    case IGVM_PAGE_DATA_TYPE_CPUID_XF:
         return CGS_PAGE_TYPE_CPUID;
     default:
         return -1;
@@ -251,8 +251,8 @@ static bool page_attrs_equal(IgvmHandle igvm, int i,
      * If one page has data and the other doesn't then this results in different
      * page types: NORMAL vs ZERO.
      */
-    data_handle1 = igvm_get_header_data(igvm, HEADER_SECTION_DIRECTIVE, i - 1);
-    data_handle2 = igvm_get_header_data(igvm, HEADER_SECTION_DIRECTIVE, i);
+    data_handle1 = igvm_get_header_data(igvm, IGVM_HEADER_SECTION_DIRECTIVE, i - 1);
+    data_handle2 = igvm_get_header_data(igvm, IGVM_HEADER_SECTION_DIRECTIVE, i);
     if ((data_handle1 == IGVMAPI_NO_DATA) &&
         (data_handle2 != IGVMAPI_NO_DATA)) {
         return false;
@@ -291,7 +291,7 @@ static int igvm_process_mem_region(struct igvm_context *ctx,
     }
 
     for (i = 0; i < page_count; ++i) {
-        data_handle = igvm_get_header_data(ctx->cgs->igvm, HEADER_SECTION_DIRECTIVE,
+        data_handle = igvm_get_header_data(ctx->cgs->igvm, IGVM_HEADER_SECTION_DIRECTIVE,
                                            i + start_index);
         if (data_handle == IGVMAPI_NO_DATA) {
             /* No data indicates a zero page */
@@ -412,7 +412,7 @@ static int directive_vp_context(struct igvm_context *ctx, int i,
 
     if (vp_context->compatibility_mask & ctx->compatibility_mask) {
         data_handle =
-            igvm_get_header_data(ctx->cgs->igvm, HEADER_SECTION_DIRECTIVE, i);
+            igvm_get_header_data(ctx->cgs->igvm, IGVM_HEADER_SECTION_DIRECTIVE, i);
         if (data_handle < 0) {
             error_setg(errp, "Invalid VP context in IGVM file. Error code: %X",
                        data_handle);
@@ -538,19 +538,19 @@ static int directive_memory_map(struct igvm_context *ctx, int i,
 
                 switch (cgmm_entry.type) {
                 case CGS_MEM_RAM:
-                    mm_entry[entry].entry_type = MEMORY;
+                    mm_entry[entry].entry_type = IGVM_MEMORY_MAP_ENTRY_TYPE_MEMORY;
                     break;
                 case CGS_MEM_RESERVED:
-                    mm_entry[entry].entry_type = PLATFORM_RESERVED;
+                    mm_entry[entry].entry_type = IGVM_MEMORY_MAP_ENTRY_TYPE_PLATFORM_RESERVED;
                     break;
                 case CGS_MEM_ACPI:
-                    mm_entry[entry].entry_type = PLATFORM_RESERVED;
+                    mm_entry[entry].entry_type = IGVM_MEMORY_MAP_ENTRY_TYPE_PLATFORM_RESERVED;
                     break;
                 case CGS_MEM_NVS:
-                    mm_entry[entry].entry_type = PERSISTENT;
+                    mm_entry[entry].entry_type = IGVM_MEMORY_MAP_ENTRY_TYPE_PERSISTENT;
                     break;
                 case CGS_MEM_UNUSABLE:
-                    mm_entry[entry].entry_type = PLATFORM_RESERVED;
+                    mm_entry[entry].entry_type = IGVM_MEMORY_MAP_ENTRY_TYPE_PLATFORM_RESERVED;
                     break;
                 }
                 retval = ctx->cgs->get_mem_map_entry(++entry, &cgmm_entry, errp);
@@ -710,7 +710,7 @@ static int supported_platform_compat_mask(struct igvm_context *ctx,
 
     ctx->compatibility_mask = 0;
 
-    result = igvm_header_count(ctx->cgs->igvm, HEADER_SECTION_PLATFORM);
+    result = igvm_header_count(ctx->cgs->igvm, IGVM_HEADER_SECTION_PLATFORM);
     if (result < 0) {
         error_setg(errp,
                    "Invalid platform header count in IGVM file. Error code: %X",
@@ -720,10 +720,10 @@ static int supported_platform_compat_mask(struct igvm_context *ctx,
 
     for (i = 0; i < (int)result; ++i) {
         IgvmVariableHeaderType typ =
-            igvm_get_header_type(ctx->cgs->igvm, HEADER_SECTION_PLATFORM, i);
+            igvm_get_header_type(ctx->cgs->igvm, IGVM_HEADER_SECTION_PLATFORM, i);
         if (typ == IGVM_VHT_SUPPORTED_PLATFORM) {
             header_handle =
-                igvm_get_header(ctx->cgs->igvm, HEADER_SECTION_PLATFORM, i);
+                igvm_get_header(ctx->cgs->igvm, IGVM_HEADER_SECTION_PLATFORM, i);
             if (header_handle < 0) {
                 error_setg(errp,
                            "Invalid platform header in IGVM file. "
@@ -737,7 +737,7 @@ static int supported_platform_compat_mask(struct igvm_context *ctx,
                                                 sizeof(
                                                     IGVM_VHS_VARIABLE_HEADER));
             /* Currently only support SEV-SNP. */
-            if (platform->platform_type == SEV_SNP) {
+            if (platform->platform_type == IGVM_PLATFORM_TYPE_SEV_SNP) {
                 /*
                  * IGVM does not define a platform types of SEV or SEV_ES.
                  * Translate SEV_SNP into CGS_PLATFORM_SEV_ES and
@@ -773,7 +773,7 @@ static int supported_platform_compat_mask(struct igvm_context *ctx,
 
 static int handle_policy(struct igvm_context *ctx, Error **errp)
 {
-    if (ctx->platform_type == SEV_SNP) {
+    if (ctx->platform_type == IGVM_PLATFORM_TYPE_SEV_SNP) {
         int id_block_len = 0;
         int id_auth_len = 0;
         if (ctx->id_block) {
@@ -841,7 +841,7 @@ int igvm_process(ConfidentialGuestSupport *cgs, Error **errp)
         return -1;
     }
 
-    result = igvm_header_count(cgs->igvm, HEADER_SECTION_DIRECTIVE);
+    result = igvm_header_count(cgs->igvm, IGVM_HEADER_SECTION_DIRECTIVE);
     if (result < 0) {
         error_setg(
             errp, "Invalid directive header count in IGVM file. Error code: %X",
@@ -851,14 +851,14 @@ int igvm_process(ConfidentialGuestSupport *cgs, Error **errp)
 
     for (i = 0; i < (int)result; ++i) {
         IgvmVariableHeaderType type =
-            igvm_get_header_type(cgs->igvm, HEADER_SECTION_DIRECTIVE, i);
+            igvm_get_header_type(cgs->igvm, IGVM_HEADER_SECTION_DIRECTIVE, i);
         if (handle(type, &ctx, i, errp) < 0) {
             retval = -1;
             break;
         }
     }
 
-    result = igvm_header_count(cgs->igvm, HEADER_SECTION_INITIALIZATION);
+    result = igvm_header_count(cgs->igvm, IGVM_HEADER_SECTION_INITIALIZATION);
     if (result < 0) {
         error_setg(
             errp, "Invalid initialization header count in IGVM file. Error code: %X",
@@ -868,7 +868,7 @@ int igvm_process(ConfidentialGuestSupport *cgs, Error **errp)
 
     for (i = 0; i < (int)result; ++i) {
         IgvmVariableHeaderType type =
-            igvm_get_header_type(cgs->igvm, HEADER_SECTION_INITIALIZATION, i);
+            igvm_get_header_type(cgs->igvm, IGVM_HEADER_SECTION_INITIALIZATION, i);
         if (handle(type, &ctx, i, errp) < 0) {
             retval = -1;
             break;
