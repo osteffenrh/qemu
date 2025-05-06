@@ -61,6 +61,7 @@
 #include "hw/uefi/var-service-api.h"
 #include "hw/i386/acpi-build.h"
 #include "target/i386/cpu.h"
+#include "exec/target_page.h"
 
 /* ICH9 AHCI has 6 ports */
 #define MAX_SATA_PORTS     6
