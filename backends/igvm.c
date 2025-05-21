@@ -14,8 +14,8 @@
 
 #include "igvm.h"
 #include "qapi/error.h"
-#include "exec/memory.h"
-#include "exec/address-spaces.h"
+#include "system/memory.h"
+#include "system/address-spaces.h"
 #include "hw/core/cpu.h"
 
 #include <igvm/igvm.h>
