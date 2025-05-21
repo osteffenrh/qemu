@@ -32,7 +32,7 @@ static void set_igvm(Object *obj, const char *value, Error **errp)
 OBJECT_DEFINE_TYPE_WITH_INTERFACES(IgvmCfg, igvm_cfg, IGVM_CFG, OBJECT,
                                    { TYPE_USER_CREATABLE }, { NULL })
 
-static void igvm_cfg_class_init(ObjectClass *oc, void *data)
+static void igvm_cfg_class_init(ObjectClass *oc, const void *data)
 {
     IgvmCfgClass *igvmc = IGVM_CFG_CLASS(oc);
 
