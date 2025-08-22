@@ -91,6 +91,7 @@ typedef struct QIgvm {
     unsigned region_start_index;
     unsigned region_last_index;
     unsigned region_page_count;
+    bool only_vp_context;
 } QIgvm;
 
 static int qigvm_directive_page_data(QIgvm *ctx, const uint8_t *header_data,
@@ -435,23 +436,13 @@ static int qigvm_directive_vp_context(QIgvm *ctx, const uint8_t *header_data,
     }
 
     /*
-     * A confidential guest support object must be provided for setting
-     * a VP context.
-     */
-    if (!ctx->cgs) {
-        error_setg(
-            errp,
-            "A VP context is present in the IGVM file but is not supported "
-            "by the current system.");
-        return -1;
-    }
-
-    /*
      * Complete any other page processing first to ensure measurements
      * are correct.
      */
-    if (qigvm_process_mem_page(ctx, NULL, errp)) {
-        return -1;
+    if (!ctx->only_vp_context) {
+        if (qigvm_process_mem_page(ctx, NULL, errp)) {
+            return -1;
+        }
     }
 
     data_handle = igvm_get_header_data(ctx->file,
@@ -467,35 +458,30 @@ static int qigvm_directive_vp_context(QIgvm *ctx, const uint8_t *header_data,
     data = (uint8_t *)igvm_get_buffer(ctx->file, data_handle);
 
     if (ctx->cgs) {
-        result = ctx->cgsc->set_guest_state(
-            vp_context->gpa, data, igvm_get_buffer_size(ctx->file, data_handle),
-            CGS_PAGE_TYPE_VMSA, vp_context->vp_index, errp);
+        if (ctx->only_vp_context) {
+            result = ctx->cgsc->set_guest_state(
+                vp_context->gpa, data, data_size,
+                CGS_PAGE_TYPE_VMSA, vp_context->vp_index, errp);
+        } else {
+            region = qigvm_prepare_memory(ctx, vp_context->gpa, IGVM_PAGE_SIZE_4K,
+                                 ctx->current_header_index, errp);
+            if (!region) {
+                igvm_free_buffer(ctx->file, data_handle);
+                return -1;
+            }
+
+            memset(region, 0, IGVM_PAGE_SIZE_4K);
+
+            memcpy(region, data, data_size);
+
+            result = ctx->cgsc->set_guest_state(
+                vp_context->gpa, region, IGVM_PAGE_SIZE_4K,
+                CGS_PAGE_TYPE_VMSA, vp_context->vp_index, errp);
+        }
     } else if (target_arch() == SYS_EMU_TARGET_X86_64) {
         result = qigvm_x86_set_vp_context(data, vp_context->vp_index, errp);
-    } else {
-        error_setg(
-            errp,
-            "A VP context is present in the IGVM file but is not supported "
-            "by the current system.");
-        result = -1;
     }
-
-    /*
-     * region = qigvm_prepare_memory(ctx, vp_context->gpa, IGVM_PAGE_SIZE_4K,
-     *                              ctx->current_header_index, errp);
-     * if (!region) {
-     *     return -1;
-     * }
-     * memset(region, 0, IGVM_PAGE_SIZE_4K);
-     *
-     * memcpy(region, data, data_size);
-     */
-
     igvm_free_buffer(ctx->file, data_handle);
-
-    result = ctx->cgsc->set_guest_state(
-        vp_context->gpa, region, IGVM_PAGE_SIZE_4K,
-        CGS_PAGE_TYPE_VMSA, vp_context->vp_index, errp);
     if (result < 0) {
         return result;
     }
@@ -935,6 +921,7 @@ int qigvm_process_file(IgvmCfg *cfg, ConfidentialGuestSupport *cgs,
     QIgvm ctx;
 
     memset(&ctx, 0, sizeof(ctx));
+    ctx.only_vp_context = onlyVpContext;
     ctx.file = qigvm_file_init(cfg->filename, errp);
     if (ctx.file < 0) {
         return -1;
