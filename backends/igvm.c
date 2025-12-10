@@ -93,6 +93,8 @@ typedef struct QIgvm {
     unsigned region_start_index;
     unsigned region_last_index;
     unsigned region_page_count;
+    bool only_vp_context;
+    GArray *madt;
 } QIgvm;
 
 static int qigvm_directive_page_data(QIgvm *ctx, const uint8_t *header_data,
@@ -120,6 +122,8 @@ static int qigvm_directive_snp_id_block(QIgvm *ctx, const uint8_t *header_data,
 static int qigvm_initialization_guest_policy(QIgvm *ctx,
                                        const uint8_t *header_data,
                                        Error **errp);
+static int qigvm_initialization_madt(QIgvm *ctx,
+                                     const uint8_t *header_data, Error **errp);
 
 struct QIGVMHandler {
     uint32_t type;
@@ -148,6 +152,8 @@ static struct QIGVMHandler handlers[] = {
       qigvm_directive_snp_id_block },
     { IGVM_VHT_GUEST_POLICY, IGVM_HEADER_SECTION_INITIALIZATION,
       qigvm_initialization_guest_policy },
+    { IGVM_VHT_MADT, IGVM_HEADER_SECTION_DIRECTIVE,
+      qigvm_initialization_madt },
 };
 
 static int qigvm_handler(QIgvm *ctx, uint32_t type, Error **errp)
@@ -764,6 +770,34 @@ static int qigvm_initialization_guest_policy(QIgvm *ctx,
     return 0;
 }
 
+static int qigvm_initialization_madt(QIgvm *ctx,
+                                     const uint8_t *header_data, Error **errp)
+{
+    const IGVM_VHS_PARAMETER *param = (const IGVM_VHS_PARAMETER *)header_data;
+    QIgvmParameterData *param_entry;
+
+    if (ctx->madt == NULL) {
+        return 0;
+    }
+
+    /* Find the parameter area that should hold the device tree */
+    QTAILQ_FOREACH(param_entry, &ctx->parameter_data, next)
+    {
+        if (param_entry->index == param->parameter_area_index) {
+
+            if (ctx->madt->len > param_entry->size) {
+                error_setg(
+                    errp,
+                    "IGVM: MADT size exceeds parameter area defined in IGVM file");
+                return -1;
+            }
+            memcpy(param_entry->data, ctx->madt->data, ctx->madt->len);
+            break;
+        }
+    }
+    return 0;
+}
+
 static int qigvm_supported_platform_compat_mask(QIgvm *ctx, Error **errp)
 {
     int32_t header_count;
@@ -892,7 +926,7 @@ IgvmHandle qigvm_file_init(char *filename, Error **errp)
 }
 
 int qigvm_process_file(IgvmCfg *cfg, ConfidentialGuestSupport *cgs,
-                       bool onlyVpContext, Error **errp)
+                       bool onlyVpContext, GArray *madt, Error **errp)
 {
     int32_t header_count;
     QIgvmParameterData *parameter;
@@ -914,6 +948,8 @@ int qigvm_process_file(IgvmCfg *cfg, ConfidentialGuestSupport *cgs,
      */
     ctx.cgs = cgs;
     ctx.cgsc = cgs ? CONFIDENTIAL_GUEST_SUPPORT_GET_CLASS(cgs) : NULL;
+
+    ctx.madt = madt;
 
     /*
      * Check that the IGVM file provides configuration for the current

@@ -18,7 +18,7 @@
 
 IgvmHandle qigvm_file_init(char *filename, Error **errp);
 int qigvm_process_file(IgvmCfg *igvm, ConfidentialGuestSupport *cgs,
-                      bool onlyVpContext, Error **errp);
+                      bool onlyVpContext, GArray *madt, Error **errp);
 
 /* x86 native */
 int qigvm_x86_get_mem_map_entry(int index,

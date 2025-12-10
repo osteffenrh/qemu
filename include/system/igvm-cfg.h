@@ -42,8 +42,8 @@ typedef struct IgvmCfgClass {
      *
      * Returns 0 for ok and -1 on error.
      */
-    int (*process)(IgvmCfg *cfg, ConfidentialGuestSupport *cgs,
-                   bool onlyVpContext, Error **errp);
+    int (*process)(IgvmCfg *cfg, ConfidentialGuestSupport *cgs, 
+                   bool onlyVpContext, GArray *madt, Error **errp);
 
 } IgvmCfgClass;
 

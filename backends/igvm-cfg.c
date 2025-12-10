@@ -17,6 +17,7 @@
 #include "qom/object_interfaces.h"
 #include "hw/qdev-core.h"
 #include "hw/boards.h"
+#include "hw/i386/acpi-build.h"
 
 #include "trace.h"
 
@@ -48,10 +49,15 @@ static void igvm_reset_hold(Object *obj, ResetType type)
 {
     MachineState *ms = MACHINE(qdev_get_machine());
     IgvmCfg *igvm = IGVM_CFG(obj);
+    GArray *madt = NULL;
 
     trace_igvm_reset_hold(type);
 
-    qigvm_process_file(igvm, ms->cgs, false, &error_fatal);
+    madt = acpi_build_madt_standalone(ms);
+
+    qigvm_process_file(igvm, ms->cgs, false, madt, &error_fatal);
+
+    g_array_free(madt, true);
 }
 
 static void igvm_reset_exit(Object *obj, ResetType type)
