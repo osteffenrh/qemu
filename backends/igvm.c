@@ -480,6 +480,12 @@ static int qigvm_directive_vp_context(QIgvm *ctx, const uint8_t *header_data,
         }
     } else if (target_arch() == SYS_EMU_TARGET_X86_64) {
         result = qigvm_x86_set_vp_context(data, vp_context->vp_index, errp);
+    } else {
+         error_setg(
+             errp,
+             "A VP context is present in the IGVM file but is not supported "
+             "by the current system.");
+         return -1;
     }
     igvm_free_buffer(ctx->file, data_handle);
     if (result < 0) {
